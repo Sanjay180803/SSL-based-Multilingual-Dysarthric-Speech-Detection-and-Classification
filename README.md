@@ -7,7 +7,7 @@ them, and compares layers 1, 4, 7 and 12 for two tasks: dysarthric vs.
 control detection, and severity classification. It covers English
 (UA-Speech, TORGO) and Tamil (TDSC).
 
-Paper (ICON 2024): [ACL Anthology 2024.icon-1.74](https://aclanthology.org/2024.icon-1.74/)
+Paper: B Sanjay, Priyadharshini M.K, Vijayalakshmi P, Nagarajan T. [*Severity Classification and Dysarthric Speech Detection using Self-Supervised Representations*](https://aclanthology.org/2024.icon-1.74/). ICON 2024, pp. 621–628.
 
 ![Block diagram](docs/block_diagram.png)
 
@@ -116,4 +116,21 @@ tests/
 results/          original result tables (see above)
 legacy/           original Colab notebook and Keras head, for reference
 docs/             block diagram
+```
+
+## Citation
+
+```bibtex
+@inproceedings{sanjay-etal-2024-severity,
+  title     = {Severity Classification and Dysarthric Speech Detection using Self-Supervised Representations},
+  author    = {Sanjay, B and M.K, Priyadharshini and P, Vijayalakshmi and T, Nagarajan},
+  editor    = {Lalitha Devi, Sobha and Arora, Karunesh},
+  booktitle = {Proceedings of the 21st International Conference on Natural Language Processing (ICON)},
+  month     = dec,
+  year      = {2024},
+  address   = {AU-KBC Research Centre, Chennai, India},
+  publisher = {NLP Association of India (NLPAI)},
+  url       = {https://aclanthology.org/2024.icon-1.74/},
+  pages     = {621--628}
+}
 ```
