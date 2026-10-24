@@ -1,129 +1,119 @@
-# Multilingual Dysarthric Detection and Severity Classification Using Layer-Wise Embeddings
+# Layer-wise SSL Embeddings for Multilingual Dysarthria Detection and Severity Classification
 
-Accurate and early detection of dysarthria severity from speech can transform clinical workflows, enabling timely, non-invasive interventions for individuals with neuromotor speech disorders. This work investigates the effect of embedding layer depth on classification performance using two self-supervised speech models—Wav2Vec2-BASE and DistilALHuBERT—evaluating them on three datasets: UA-Speech, TORGO, and the Tamil Dysarthric Speech Corpus (TDSC). Our experiments show that embeddings from initial and intermediate layers consistently outperform final-layer embeddings across all tasks and datasets. We present novel findings indicating that intermediate layers, especially Layer 4, capture articulatory features relevant for severity assessment better than final layers, especially in morphologically rich languages like Tamil.
+Which layer of a self-supervised speech model carries the most information
+about dysarthria? This project extracts per-layer embeddings from
+**wav2vec2-base** and **DistilALHuBERT**, trains SVM and MLP classifiers on
+them, and compares layers 1, 4, 7 and 12 for two tasks: dysarthric vs.
+control detection, and severity classification. It covers English
+(UA-Speech, TORGO) and Tamil (TDSC).
 
-For further details, please refer to our published work on TDSC Dataset: [Link to Paper](https://aclanthology.org/2024.icon-1.74/).
+Paper (ICON 2024): [ACL Anthology 2024.icon-1.74](https://aclanthology.org/2024.icon-1.74/)
 
-## Schematic Block Diagram
-![Model Architecture](Speech.png)
-
+![Block diagram](docs/block_diagram.png)
 
 ## Datasets
 
-This project uses three publicly available dysarthric speech datasets:
+The corpora are licensed and are not redistributed here. Obtain them from:
 
-- [**TDSC - Tamil Dysarthric Speech Corpus**](https://catalog.ldc.upenn.edu/LDC2021S04)  
-- [**TORGO Database**](https://www.cs.toronto.edu/~complingweb/data/TORGO/torgo.html)  
-- [**UA-Speech Corpus**](https://speechtechnology.web.illinois.edu/data/)
+- **TDSC** — Tamil Dysarthric Speech Corpus, [LDC2021S04](https://catalog.ldc.upenn.edu/LDC2021S04)
+- **TORGO** — [University of Toronto](https://www.cs.toronto.edu/~complingweb/data/TORGO/torgo.html)
+- **UA-Speech** — [University of Illinois](https://speechtechnology.web.illinois.edu/data/)
 
----
+## Pipeline
 
-## ⚙️ Prerequisites
+```
+configs/<dataset>_<model>.yaml
+        │
+        ▼
+python -m dysarthria.extract     manifest (path, label, speaker) →
+                                 hidden states → mean-pool per layer →
+                                 runs/<name>/layer_XX.npy + index.csv
+        │
+        ▼
+python -m dysarthria.train       speaker-independent cross-validation,
+                                 SVM and MLP, several seeds →
+                                 results.json
+```
 
-- Python 3.8–3.11  
-- [Virtual environment (optional but recommended)]  
-- Install required packages from `requirements.txt`:
-  ```bash
-  python -m venv venv
-  source venv/bin/activate   # On Windows use: venv\Scripts\activate
-  pip install -r requirements.txt
-  ```
+```bash
+pip install -r requirements.txt -e .
 
----
+# 1. edit dataset.root (and speaker_regex for TDSC) in the config
+python -m dysarthria.extract --config configs/torgo_wav2vec2.yaml
 
-## 🏃‍♂️ Steps to Run the Project
+# 2. evaluate layers 1, 4, 7, 12 with both classifiers over 5 seeds x 5 folds
+python -m dysarthria.train --features runs/torgo_wav2vec2 --layers 1 4 7 12 \
+    --out runs/torgo_wav2vec2/results.json
+```
 
-You can perform feature extraction and classification for both **HuBERT** and **Wav2Vec2** using the same steps:
+Configs are provided for TORGO, UA-Speech and TDSC (wav2vec2) and TDSC
+(DistilALHuBERT). DistilALHuBERT needs a clone of
+[backspacetg/distilAlhubert](https://github.com/backspacetg/distilAlhubert)
+and its checkpoint; set `model.repo_path` and `model.checkpoint`.
 
-1. **Prepare your dataset**  
-   - Place your dataset (e.g., TDSC, TORGO, or UA-Speech) in a folder containing `.wav` files structured as required.
+## Evaluation protocol
 
-2. **Adjust paths in the script**  
-   - Open your extraction script (e.g., `distilALhubert_extraction.py` for HuBERT, or an equivalent Wav2Vec script).
-     
-Update the following variables in your extraction and classification scripts so they work correctly with your dataset and environment:
+- **Speaker-independent splits.** `StratifiedGroupKFold` over speakers:
+  no speaker appears in both training and test data. Every utterance needs
+  a speaker ID, parsed with `dataset.speaker_regex`; a file that does not
+  match is an error.
+- **Repeated runs.** Every (layer, classifier) is evaluated over each seed
+  × fold. Results report mean ± standard deviation of accuracy and macro
+  F1, per-class precision/recall/F1, and the confusion matrix.
+- **Leakage check.** `--split utterance` reproduces a random utterance-level
+  split, so the two protocols can be compared on the same features.
 
-- **Model Checkpoint Path**
-  ```python
-  model_ckpt_path = "/path/to/your/model_checkpoint.ckpt"
-  ```
-  Path to your downloaded or trained HuBERT or Wav2Vec2 checkpoint.
+Why this matters: dysarthria datasets have few speakers and many
+utterances each. With a random utterance split, a classifier can score
+highly by recognizing *voices* it saw in training. In the synthetic test
+`test_utterance_split_is_inflated_by_speaker_leakage`, where labels carry
+no information beyond speaker identity, a linear SVM scores **100%** with
+an utterance split and **51% ± 18%** (chance) with a speaker split.
 
-- **Input Audio Folder**
-  ```python
-  input_folder = "/path/to/your/input_audio_dataset"
-  ```
-  Folder containing your `.wav` files.
+## Previously reported results
 
-- **Output Embeddings Folder**
-  ```python
-  output_folder = "/path/to/your/output_embeddings"
-  ```
-  Where the script will save extracted embedding `.pt` files.
+`results/` contains the accuracy tables from the original experiments
+(layers 1, 4, 7, 12; SVM and MLP; up to 99–100% accuracy). The original
+notebook, kept in `legacy/` for reference:
 
-- **Processed Audio Structure Folder**
-  ```python
-  processed_structure_folder = "/path/to/your/processed_audio_structure"
-  ```
-  Where processed `.wav` files will be moved after embeddings are extracted.
+- split utterances with a random `train_test_split`, so the same speakers
+  appear in training and test data;
+- extracted only the final layer (`last_hidden_state`); the code that
+  produced per-layer features is not in the repository;
+- flattened each utterance's frame embeddings and kept the first 768
+  values (the first frame) before classification, unless the separately
+  defined time-averaging step was applied first.
 
-- **Local Data Folder** (optional for faster processing)
-  ```python
-  local_data_folder = "/path/to/your/local_copy_of_dataset"
-  ```
-  Folder to store a local copy of your dataset.
+Until the tables are regenerated with the speaker-independent protocol
+above, treat them as speaker-dependent results.
 
-- **Example Embedding File for Sanity Check**
-  ```python
-  pt_file_path = "/path/to/your/embeddings_folder/example_embeddings.pt"
-  ```
-  Path to a saved embedding you want to inspect for validation.
+## Classifiers
 
-- **Embeddings Folder for Classification**
-  ```python
-  embedding_folder = "/path/to/your/embeddings_folder"
-  ```
-  Folder containing your saved embeddings for running SVM/CNN classifiers.
+- **SVM**: linear kernel on standardized features.
+- **MLP**: Dense 128 → Dropout 0.3 → Dense 64 → Dropout 0.3 → softmax,
+  Adam, cross-entropy, 50 epochs (`src/dysarthria/mlp.py`). This is a
+  PyTorch port of the Keras head in `legacy/mlp_head_keras.py`, which the
+  original README called a CNN; it has no convolutional layers.
 
-- **Subfolders for Renaming Files**
-  ```python
-  subfolder_1 = '/path/to/your/features_folder/severe'
-  subfolder_2 = '/path/to/your/features_folder/mild'
-  subfolder_3 = '/path/to/your/features_folder/moderate'
-  subfolder_M_control = '/path/to/your/features_folder/M_control'
-  subfolder_F_control = '/path/to/your/features_folder/F_control'
-  ```
-  Adjust these subfolders to match your dataset structure if you plan to add suffixes like `_dysarthria` or `_control` during file renaming.
+## Tests
 
-- **Averaging Embeddings Script**
-  ```python
-  input_folder = '/path/to/your/features_folder'
-  output_folder = '/path/to/your/averaged_features_folder'
-  ```
-  - `input_folder`: folder containing `.pt` embeddings to average.
-  - `output_folder`: folder where the averaged `.npy` features will be saved.
+```bash
+pip install pytest
+pytest -v
+```
 
-> ✅ **Important:** Replace each `/path/to/your/...` with the actual path to your dataset, embeddings, or desired output locations. These modifications are necessary for the scripts to run successfully on your local or cloud environment.
+Synthetic-data tests (no corpora needed): manifest parsing for TORGO- and
+UA-Speech-style layouts, layer pooling, speaker-disjoint folds, the
+leakage comparison, both classifiers, and the training CLI. CI runs them
+on every pull request.
 
+## Repository layout
 
-3. **Run the script**  
-   Execute your extraction script:
-   ```bash
-   python distilALhubert_extraction.py
-   ```
-   or for Wav2Vec2:
-   ```bash
-   python wav2vec_extraction.py
-   ```
-
-4. **Train and evaluate**  
-   - After embeddings are saved, use your classifier code (SVM, CNN, etc.) to perform dysarthria detection and severity classification.
-   - Adjust paths in the classifier script to point to your embeddings folder.
-
-**Note:** The provided example script [`distilALhubert_extraction.txt`](distilALhubert_extraction.txt) covers the complete pipeline for HuBERT, including model loading, embedding extraction, dataset structure replication, and a sample SVM training process. (Similar Code is followed for Wav2vec2)
-
-## 📊 Evaluation Results
-
-Our performance tables comparing SVM and CNN classifiers across datasets, using both DistilALHuBERT and wav2vec2 models can be found in the [Results](https://github.com/Sanjay180803/SSL-based-Multilingual-Dysarthric-Speech-Detection-Classification-/tree/main/Results)
-
-
+```
+src/dysarthria/   manifest.py  extract.py  train.py  mlp.py  config.py
+configs/          one YAML per dataset × model
+tests/
+results/          original result tables (see above)
+legacy/           original Colab notebook and Keras head, for reference
+docs/             block diagram
+```

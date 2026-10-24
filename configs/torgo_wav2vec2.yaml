@@ -1,0 +1,14 @@
+# Dysarthric vs. control detection on TORGO with wav2vec2-base.
+# TORGO speakers: F01..F04, M01..M05 (dysarthric); FC01..FC03, MC01..MC04 (control).
+dataset:
+  root: /path/to/TORGO            # contains F01/, FC01/, M01/, ...
+  label_from: speaker_prefix
+  labels: {F: dysarthric, M: dysarthric, FC: control, MC: control}
+  speaker_regex: '^((?:FC|MC|F|M)\d+)/'
+
+model:
+  type: wav2vec2
+  checkpoint: facebook/wav2vec2-base
+  layers: [1, 4, 7, 12]
+
+output_dir: runs/torgo_wav2vec2

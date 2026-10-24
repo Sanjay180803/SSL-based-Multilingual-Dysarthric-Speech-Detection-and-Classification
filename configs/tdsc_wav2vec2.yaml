@@ -1,0 +1,17 @@
+# Severity classification on the Tamil Dysarthric Speech Corpus (LDC2021S04).
+# Expected layout: <root>/<severity>/<speaker>/*.wav with severity in
+# {mild, moderate, severe} and controls under control/.
+# IMPORTANT: set speaker_regex to capture TDSC's speaker IDs for your copy
+# of the corpus; speaker-independent evaluation depends on it.
+dataset:
+  root: /path/to/TDSC
+  label_from: directory
+  labels: {mild: mild, moderate: moderate, severe: severe, control: control}
+  speaker_regex: '^[^/]+/([^/]+)/'     # the <speaker> directory
+
+model:
+  type: wav2vec2
+  checkpoint: facebook/wav2vec2-base
+  layers: [1, 4, 7, 12]
+
+output_dir: runs/tdsc_wav2vec2

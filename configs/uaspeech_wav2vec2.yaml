@@ -1,0 +1,16 @@
+# Severity classification on UA-Speech with wav2vec2-base.
+# Files are named <speaker>_<block>_<word>_<mic>.wav, e.g. M05_B1_C12_M3.wav.
+# Put each dysarthric speaker's folder under a severity directory
+# (very_low/, low/, mid/, high/ intelligibility) and controls under control/.
+dataset:
+  root: /path/to/UASpeech/audio
+  label_from: directory
+  labels: {very_low: severe, low: moderate_severe, mid: moderate, high: mild, control: control}
+  speaker_regex: '(?:^|/)(C?[FM]\d+)_'
+
+model:
+  type: wav2vec2
+  checkpoint: facebook/wav2vec2-base
+  layers: [1, 4, 7, 12]
+
+output_dir: runs/uaspeech_wav2vec2

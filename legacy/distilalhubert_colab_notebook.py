@@ -1,3 +1,7 @@
+# Original Google Colab notebook export, kept for reference. It is not
+# runnable as a .py file (it uses "!" shell commands and "cd"). The
+# maintained pipeline is in src/dysarthria/.
+
 # -*- coding: utf-8 -*-
 """Hubert Extraction"""
 
